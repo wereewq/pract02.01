@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ИС «КнигоГрад: Система учёта продаж и поставок»</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --border: #dce1e7;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --text: #1e293b;
+    --muted: #64748b;
+    --green: #16a34a;
+    --yellow: #d97706;
+    --red: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+  body { background: var(--bg); color: var(--text); min-height: 100vh; }
+  .hidden { display: none !important; }
+
+  /* Авторизация (Рисунок 2 МП) */
+  #login-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);
+  }
+  .login-card {
+    background: var(--surface); padding: 36px; border-radius: 12px; width: 100%; max-width: 420px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08); border: 1px solid var(--border);
+  }
+  .login-card h1 { font-size: 22px; text-align: center; margin-bottom: 6px; color: var(--primary); }
+  .login-card p.sub { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  input, select {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px;
+    font-size: 14px; background: #fff; color: var(--text);
+  }
+  input:focus, select:focus { outline: none; border-color: var(--primary); }
+  .btn {
+    padding: 9px 16px; border: none; border-radius: 7px; cursor: pointer; font-weight: 600;
+    font-size: 14px; transition: 0.15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--text); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .error-text { color: var(--red); font-size: 13px; margin-bottom: 10px; }
+
+  /* Навигация и каркас */
+  .topbar {
+    background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px;
+    height: 58px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .brand { font-weight: 700; font-size: 18px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+  .nav-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .nav-tab {
+    padding: 8px 14px; border-radius: 7px; cursor: pointer; font-size: 14px; font-weight: 500;
+    color: var(--muted); border: none; background: transparent;
+  }
+  .nav-tab.active { background: #eff6ff; color: var(--primary); font-weight: 600; }
+  .user-box { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .container { max-width: 1280px; margin: 24px auto; padding: 0 20px; }
+
+  /* Карточки и таблицы */
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .kpi-title { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .kpi-val { font-size: 28px; font-weight: 700; color: var(--text); }
+
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .search-box { max-width: 360px; flex: 1; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+  th { background: #f8fafc; font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; }
+  tr:hover td { background: #f8fafc; }
+
+  .badge { padding: 3px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+  .badge-green { background: #dcfce7; color: var(--green); }
+  .badge-yellow { background: #fef3c7; color: var(--yellow); }
+  .badge-red { background: #fee2e2; color: var(--red); }
+
+  /* Касса / Продажи (Рисунок 6 МП) */
+  .pos-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .pos-grid { grid-template-columns: 1fr; } }
+  .total-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 15px; }
+  .total-final { font-size: 22px; font-weight: 700; color: var(--primary); border-top: 1px solid var(--border); padding-top: 10px; }
+
+  /* Модальное окно */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.45); display: flex;
+    align-items: center; justify-content: center; z-index: 50; padding: 16px;
+  }
+  .modal {
+    background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 540px;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 35px rgba(0,0,0,0.18);
+  }
+  .modal h3 { margin-bottom: 16px; font-size: 18px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+  /* Уведомления */
+  #toast {
+    position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: #fff;
+    padding: 12px 18px; border-radius: 8px; font-size: 14px; z-index: 100; box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+  .quick-accounts { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--border); font-size: 12px; color: var(--muted); }
+  .quick-accounts span { display: inline-block; background: #f1f5f9; padding: 3px 7px; border-radius: 4px; margin: 2px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- ЭКРАН АВТОРИЗАЦИИ -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>📚 ИС «КнигоГрад»</h1>
+    <p class="sub">Система учёта продаж и поставок сети книжных магазинов</p>
+    <div id="login-error" class="error-text hidden"></div>
+    <div class="form-group">
+      <label>Логин</label>
+      <input type="text" id="login-input" placeholder="admin_book" value="admin_book">
+    </div>
+    <div class="form-group">
+      <label>Пароль</label>
+      <input type="password" id="password-input" placeholder="••••••••" value="AdminBook2026!">
+    </div>
+    <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="doLogin()">Войти в систему</button>
+    <div class="quick-accounts">
+      Быстрый выбор тестовой роли:<br>
+      <span onclick="fillCreds('admin_book','AdminBook2026!')">Администратор</span>
+      <span onclick="fillCreds('manager_book','Manager2026!')">Менеджер</span>
+      <span onclick="fillCreds('cashier_book','Cashier2026!')">Кассир</span>
+    </div>
+  </div>
+</div>
+
+<!-- ОСНОВНОЙ ИНТЕРФЕЙС -->
+<div id="app-screen" class="hidden">
+  <div class="topbar">
+    <div class="brand">📚 КнигоГрад</div>
+    <div class="nav-tabs" id="nav-tabs">
+      <button class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">Главная</button>
+      <button class="nav-tab" data-tab="products" onclick="switchTab('products')">Товары</button>
+      <button class="nav-tab" data-tab="supplies" onclick="switchTab('supplies')" id="tab-btn-supplies">Поставки</button>
+      <button class="nav-tab" data-tab="sales" onclick="switchTab('sales')">Продажи</button>
+      <button class="nav-tab" data-tab="customers" onclick="switchTab('customers')">Клиенты</button>
+      <button class="nav-tab" data-tab="reports" onclick="switchTab('reports')" id="tab-btn-reports">Отчёты</button>
+      <button class="nav-tab" data-tab="users" onclick="switchTab('users')" id="tab-btn-users">Пользователи</button>
+    </div>
+    <div class="user-box">
+      <span id="current-user-label"></span>
+      <button class="btn btn-outline btn-sm" onclick="logout()">Выход</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- ВКЛАДКА 1: ГЛАВНАЯ -->
+    <div id="view-dashboard" class="tab-view">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-title">Продаж за сегодня</div>
+          <div class="kpi-val" id="kpi-sales">0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Выручка за сегодня</div>
+          <div class="kpi-val" id="kpi-revenue">0 ₽</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Позиций в каталоге</div>
+          <div class="kpi-val" id="kpi-products">0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Клиентов в базе</div>
+          <div class="kpi-val" id="kpi-customers">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:14px;">⚠️ Товары с низким остатком (требуют пополнения)</h3>
+        <table>
+          <thead>
+            <tr><th>Название книги</th><th>Автор</th><th>Магазин</th><th>Остаток</th><th>Статус</th></tr>
+          </thead>
+          <tbody id="low-stock-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА 2: ТОВАРЫ -->
+    <div id="view-products" class="tab-view hidden">
+      <div class="card">
+        <div class="toolbar">
+          <input type="text" class="search-box" id="product-search" placeholder="Поиск по названию, автору или ISBN..." oninput="loadProducts()">
+          <button class="btn btn-primary" id="btn-add-product" onclick="openProductModal()">+ Добавить товар</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Название</th><th>Автор</th><th>Категория</th><th>ISBN</th><th>Цена</th>
+              <th>Маг. №1</th><th>Маг. №2</th><th>Маг. №3</th><th>Действия</th>
+            </tr>
+          </thead>
+          <tbody id="products-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА 3: ПОСТАВКИ -->
+    <div id="view-supplies" class="tab-view hidden">
+      <div class="card">
+        <div class="toolbar">
+          <input type="text" class="search-box" id="supply-search" placeholder="Поиск по номеру накладной..." oninput="loadSupplies()">
+          <button class="btn btn-primary" onclick="openSupplyModal()">+ Новая поставка</button>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Дата</th><th>Поставщик</th><th>Магазин-получатель</th><th>Номер накладной</th><th>Позиций</th><th>Общая сумма</th></tr>
+          </thead>
+          <tbody id="supplies-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА 4: ПРОДАЖИ (КАССА) -->
+    <div id="view-sales" class="tab-view hidden">
+      <div class="pos-grid">
+        <div class="card">
+          <h3 style="margin-bottom:12px;">Оформление продажи (Касса)</h3>
+          <div class="toolbar">
+            <select id="pos-store-select" style="max-width:240px;" onchange="renderCart()"></select>
+            <select id="pos-product-select" style="flex:1;"></select>
+            <input type="number" id="pos-qty-input" value="1" min="1" style="width:80px;">
+            <button class="btn btn-primary" onclick="addToCart()">+ В корзину</button>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Название</th><th>Цена</th><th>Кол-во</th><th>Сумма</th><th></th></tr>
+            </thead>
+            <tbody id="cart-tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="card total-box">
+          <h3 style="margin-bottom:14px;">Итог чека</h3>
+          <div class="total-row"><span>Сумма без скидки:</span><strong id="pos-subtotal">0.00 ₽</strong></div>
+          <div class="total-row"><span>Скидка по карте:</span><strong id="pos-discount">0%</strong></div>
+          <div class="total-row total-final"><span>Итог к оплате:</span><span id="pos-total">0.00 ₽</span></div>
+
+          <div class="form-group" style="margin-top:14px;">
+            <label>Способ оплаты</label>
+            <select id="pos-payment">
+              <option value="Карта">Банковская карта</option>
+              <option value="Наличные">Наличные</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Номер дисконтной карты (необязательно)</label>
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="pos-card" placeholder="Например: 100200300">
+              <button class="btn btn-outline btn-sm" onclick="applyCard()">Применить</button>
+            </div>
+            <small id="card-info" style="color:var(--green);"></small>
+          </div>
+          <button class="btn btn-success" style="width:100%; justify-content:center; margin-top:8px;" onclick="submitSale()">
+            Провести продажу и сформировать PDF-чек
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:12px;">История продаж</h3>
+        <table>
+          <thead>
+            <tr><th>№ Чека</th><th>Дата и время</th><th>Магазин</th><th>Кассир</th><th>Клиент</th><th>Оплата</th><th>Сумма</th></tr>
+          </thead>
+          <tbody id="sales-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА 5: КЛИЕНТЫ -->
+    <div id="view-customers" class="tab-view hidden">
+      <div class="card">
+        <div class="toolbar">
+          <input type="text" class="search-box" id="customer-search" placeholder="Поиск по ФИО или телефону..." oninput="loadCustomers()">
+          <button class="btn btn-primary" onclick="openCustomerModal()">+ Добавить клиента</button>
+        </div>
+        <table>
+          <thead>
+            <tr><th>ФИО</th><th>Телефон</th><th>Email</th><th>Дисконтная карта</th><th>Скидка</th><th>Срок действия</th><th>Покупок / Сумма</th><th></th></tr>
+          </thead>
+          <tbody id="customers-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА 6: ОТЧЁТЫ -->
+    <div id="view-reports" class="tab-view hidden">
+      <div class="card">
+        <h3 style="margin-bottom:14px;">Формирование аналитического отчёта в формате PDF</h3>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; align-items:end;">
+          <div class="form-group" style="margin:0;">
+            <label>Тип отчёта</label>
+            <select id="rep-type">
+              <option value="sales_period">Продажи за период</option>
+              <option value="low_stock">Остатки и дефицит товаров</option>
+              <option value="customer_activity">Активность клиентов</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Период С</label>
+            <input type="date" id="rep-from">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Период По</label>
+            <input type="date" id="rep-to">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Магазин</label>
+            <select id="rep-store"><option value="">Все магазины</option></select>
+          </div>
+          <button class="btn btn-primary" onclick="generateReport()">Сформировать PDF</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:12px;">Сформированные PDF-документы (чеки и отчёты)</h3>
+        <table>
+          <thead>
+            <tr><th>Имя файла</th><th>Дата создания</th><th>Размер</th><th>Действия</th></tr>
+          </thead>
+          <tbody id="reports-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ВКЛАДКА 7: ПОЛЬЗОВАТЕЛИ -->
+    <div id="view-users" class="tab-view hidden">
+      <div class="card">
+        <div class="toolbar">
+          <h3>Управление учётными записями сотрудников</h3>
+          <button class="btn btn-primary" onclick="openUserModal()">+ Новый сотрудник</button>
+        </div>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>ФИО</th><th>Логин</th><th>Роль</th><th>Действия</th></tr>
+          </thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+<div id="toast" class="hidden"></div>
+
+<script>
+let TOKEN = localStorage.getItem("kg_token") || "";
+let USER = JSON.parse(localStorage.getItem("kg_user") || "null");
+let STORES = [];
+let PRODUCTS_CACHE = [];
+let CART = [];
+let APPLIED_DISCOUNT = 0;
+
+function toast(msg, isErr = false) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.background = isErr ? "#dc2626" : "#1e293b";
+  el.classList.remove("hidden");
+  setTimeout(() => el.classList.add("hidden"), 3500);
+}
+
+async function api(url, opts = {}) {
+  opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+  if (TOKEN) opts.headers["Authorization"] = "Bearer " + TOKEN;
+  const res = await fetch(url, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    if (res.status === 401 && url !== "/api/auth/login") logout();
+    throw new Error(data.detail || "Ошибка запроса");
+  }
+  return data;
+}
+
+function fillCreds(l, p) {
+  document.getElementById("login-input").value = l;
+  document.getElementById("password-input").value = p;
+}
+
+async function doLogin() {
+  const login = document.getElementById("login-input").value.trim();
+  const password = document.getElementById("password-input").value;
+  const errEl = document.getElementById("login-error");
+  errEl.classList.add("hidden");
+  try {
+    const res = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ login, password }) });
+    TOKEN = res.access_token;
+    USER = res.user;
+    localStorage.setItem("kg_token", TOKEN);
+    localStorage.setItem("kg_user", JSON.stringify(USER));
+    initApp();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove("hidden");
+  }
+}
+
+function logout() {
+  TOKEN = "";
+  USER = null;
+  localStorage.removeItem("kg_token");
+  localStorage.removeItem("kg_user");
+  document.getElementById("app-screen").classList.add("hidden");
+  document.getElementById("login-screen").classList.remove("hidden");
+}
+
+async function initApp() {
+  if (!TOKEN || !USER) return;
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app-screen").classList.remove("hidden");
+  document.getElementById("current-user-label").textContent = `${USER.full_name} (${USER.role})`;
+
+  // Разграничение прав доступа по ролям (из СТ)
+  const isCashier = USER.role === "Кассир";
+  const isAdmin = USER.role === "Администратор";
+  document.getElementById("tab-btn-supplies").classList.toggle("hidden", isCashier);
+  document.getElementById("tab-btn-reports").classList.toggle("hidden", isCashier);
+  document.getElementById("tab-btn-users").classList.toggle("hidden", !isAdmin && USER.role !== "Руководитель");
+  document.getElementById("btn-add-product").classList.toggle("hidden", isCashier);
+
+  STORES = await api("/api/stores");
+  const posStore = document.getElementById("pos-store-select");
+  const repStore = document.getElementById("rep-store");
+  posStore.innerHTML = STORES.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+  repStore.innerHTML = `<option value="">Все магазины</option>` + STORES.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  document.getElementById("rep-from").value = monthAgo;
+  document.getElementById("rep-to").value = today;
+
+  switchTab("dashboard");
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".nav-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll(".tab-view").forEach(v => v.classList.add("hidden"));
+  document.getElementById("view-" + tab).classList.remove("hidden");
+
+  if (tab === "dashboard") loadDashboard();
+  if (tab === "products") loadProducts();
+  if (tab === "supplies") loadSupplies();
+  if (tab === "sales") loadSalesTab();
+  if (tab === "customers") loadCustomers();
+  if (tab === "reports") loadReports();
+  if (tab === "users") loadUsers();
+}
+
+async function loadDashboard() {
+  const d = await api("/api/dashboard");
+  document.getElementById("kpi-sales").textContent = d.sales_count_today;
+  document.getElementById("kpi-revenue").textContent = d.revenue_today.toFixed(2) + " ₽";
+  document.getElementById("kpi-products").textContent = d.total_products;
+  document.getElementById("kpi-customers").textContent = d.total_customers;
+
+  const tbody = document.getElementById("low-stock-tbody");
+  if (!d.low_stocks.length) {
+    tbody.innerHTML = `<tr><td colspan="5">Все товары в достаточном количестве</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = d.low_stocks.map(item => `
+    <tr>
+      <td><strong>${item.title}</strong></td>
+      <td>${item.author}</td>
+      <td>${item.store_name}</td>
+      <td>${item.quantity} шт.</td>
+      <td>${item.quantity === 0
+        ? '<span class="badge badge-red">Нет в наличии</span>'
+        : '<span class="badge badge-yellow">Низкий остаток</span>'}</td>
+    </tr>
+  `).join("");
+}
+
+function stockBadge(qty) {
+  if (qty === 0) return `<span class="badge badge-red">0 шт.</span>`;
+  if (qty <= 5) return `<span class="badge badge-yellow">${qty} шт.</span>`;
+  return `<span class="badge badge-green">${qty} шт.</span>`;
+}
+
+async function loadProducts() {
+  const q = document.getElementById("product-search").value;
+  PRODUCTS_CACHE = await api("/api/products?q=" + encodeURIComponent(q));
+  const canEdit = USER.role !== "Кассир";
+  const canDel = USER.role === "Администратор";
+  document.getElementById("products-tbody").innerHTML = PRODUCTS_CACHE.map(p => `
+    <tr>
+      <td><strong>${p.title}</strong></td>
+      <td>${p.author}</td>
+      <td>${p.category}</td>
+      <td>${p.isbn}</td>
+      <td>${p.price.toFixed(2)} ₽</td>
+      <td>${stockBadge(p.store_stocks["1"] || 0)}</td>
+      <td>${stockBadge(p.store_stocks["2"] || 0)}</td>
+      <td>${stockBadge(p.store_stocks["3"] || 0)}</td>
+      <td>
+        ${canEdit ? `<button class="btn btn-outline btn-sm" onclick="openEditProduct(${p.id})">✏️</button>` : ""}
+        ${canDel ? `<button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">🗑️</button>` : ""}
+      </td>
+    </tr>
+  `).join("");
+}
+
+function openProductModal() {
+  document.getElementById("modal-root").innerHTML = `
+    <div class="modal-backdrop" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h3>Добавление нового товара</h3>
+        <div class="form-group"><label>Название книги</label><input id="m-title"></div>
+        <div class="form-group"><label>Автор</label><input id="m-author"></div>
+        <div class="form-group"><label>Категория / Жанр</label><input id="m-cat" value="Художественная литература"></div>
+        <div class="form-group"><label>Цена (руб.)</label><input type="number" step="0.01" id="m-price"></div>
+        <div class="form-group"><label>ISBN (10 или 13 цифр)</label><input id="m-isbn" placeholder="9785170000001"></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+          <div class="form-group"><label>Остаток Маг. №1</label><input type="number" id="m-s1" value="10"></div>
+          <div class="form-group"><label>Остаток Маг. №2</label><input type="number" id="m-s2" value="10"></div>
+          <div class="form-group"><label>Остаток Маг. №3</label><input type="number" id="m-s3" value="10"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="saveNewProduct()">Сохранить</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveNewProduct() {
+  try {
+    await api("/api/products", {
+      method: "POST",
+      body: JSON.stringify({
+        title: document.getElementById("m-title").value,
+        author: document.getElementById("m-author").value,
+        category: document.getElementById("m-cat").value,
+        price: parseFloat(document.getElementById("m-price").value),
+        isbn: document.getElementById("m-isbn").value,
+        initial_stock_store_1: parseInt(document.getElementById("m-s1").value || "0"),
+        initial_stock_store_2: parseInt(document.getElementById("m-s2").value || "0"),
+        initial_stock_store_3: parseInt(document.getElementById("m-s3").value || "0"),
+      })
+    });
+    closeModal();
+    toast("Товар успешно добавлен");
+    loadProducts();
+  } catch (e) { toast(e.message, true); }
+}
+
+function openEditProduct(id) {
+  const p = PRODUCTS_CACHE.find(x => x.id === id);
+  document.getElementById("modal-root").innerHTML = `
+    <div class="modal-backdrop" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h3>Редактирование товара</h3>
+        <div class="form-group"><label>Название</label><input id="e-title" value="${p.title}"></div>
+        <div class="form-group"><label>Автор</label><input id="e-author" value="${p.author}"></div>
+        <div class="form-group"><label>Категория</label><input id="e-cat" value="${p.category}"></div>
+        <div class="form-group"><label>Цена</label><input type="number" step="0.01" id="e-price" value="${p.price}"></div>
+        <div class="form-group"><label>ISBN</label><input id="e-isbn" value="${p.isbn}"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="saveEditProduct(${id})">Сохранить</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveEditProduct(id) {
+  try {
+    await api(`/api/products/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        title: document.getElementById("e-title").value,
+        author: document.getElementById("e-author").value,
+        category: document.getElementById("e-cat").value,
+        price: parseFloat(document.getElementById("e-price").value),
+        isbn: document.getElementById("e-isbn").value,
+      })
+    });
+    closeModal();
+    toast("Данные сохранены");
+    loadProducts();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deleteProduct(id) {
+  if (!confirm("Удалить товар из каталога?")) return;
+  try {
+    await api(`/api/products/${id}`, { method: "DELETE" });
+    toast("Товар удалён");
+    loadProducts();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function loadSupplies() {
+  const q = document.getElementById("supply-search").value;
+  const list = await api("/api/supplies?q=" + encodeURIComponent(q));
+  document.getElementById("supplies-tbody").innerHTML = list.map(s => `
+    <tr>
+      <td>${s.supply_date}</td>
+      <td>${s.supplier_name}</td>
+      <td>${s.store_name}</td>
+      <td><strong>${s.invoice_number}</strong></td>
+      <td>${s.items_count}</td>
+      <td>${s.total_amount.toFixed(2)} ₽</td>
+    </tr>
+  `).join("");
+}
+
+async function openSupplyModal() {
+  const suppliers = await api("/api/suppliers");
+  const products = await api("/api/products");
+  document.getElementById("modal-root").innerHTML = `
+    <div class="modal-backdrop" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h3>Регистрация новой поставки</h3>
+        <div class="form-group"><label>Поставщик</label>
+          <select id="s-sup">${suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join("")}</select>
+        </div>
+        <div class="form-group"><label>Магазин-получатель</label>
+          <select id="s-store">${STORES.map(s => `<option value="${s.id}">${s.name}</option>`).join("")}</select>
+        </div>
+        <div class="form-group"><label>Номер накладной</label><input id="s-inv" value="ТН-${Date.now().toString().slice(-5)}"></div>
+        <div class="form-group"><label>Поступающий товар</label>
+          <select id="s-prod">${products.map(p => `<option value="${p.id}">${p.title} (${p.author})</option>`).join("")}</select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-group"><label>Количество (шт.)</label><input type="number" id="s-qty" value="15" min="1"></div>
+          <div class="form-group"><label>Закупочная цена (руб.)</label><input type="number" id="s-price" value="400" step="0.01"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="saveSupply()">Провести поставку</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveSupply() {
+  try {
+    await api("/api/supplies", {
+      method: "POST",
+      body: JSON.stringify({
+        supplier_id: parseInt(document.getElementById("s-sup").value),
+        store_id: parseInt(document.getElementById("s-store").value),
+        supply_date: new Date().toISOString().slice(0, 10),
+        invoice_number: document.getElementById("s-inv").value,
+        items: [{
+          product_id: parseInt(document.getElementById("s-prod").value),
+          quantity: parseInt(document.getElementById("s-qty").value),
+          purchase_price: parseFloat(document.getElementById("s-price").value),
+        }]
+      })
+    });
+    closeModal();
+    toast("Поставка добавлена, остатки увеличены");
+    loadSupplies();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function loadSalesTab() {
+  PRODUCTS_CACHE = await api("/api/products");
+  document.getElementById("pos-product-select").innerHTML = PRODUCTS_CACHE.map(p =>
+    `<option value="${p.id}">${p.title} — ${p.price.toFixed(2)} ₽</option>`
+  ).join("");
+  renderCart();
+  const sales = await api("/api/sales");
+  document.getElementById("sales-tbody").innerHTML = sales.map(s => `
+    <tr>
+      <td>#${s.id}</td>
+      <td>${s.date}</td>
+      <td>${s.store_name}</td>
+      <td>${s.cashier}</td>
+      <td>${s.customer}</td>
+      <td>${s.payment_method}</td>
+      <td><strong>${s.total.toFixed(2)} ₽</strong></td>
+    </tr>
+  `).join("");
+}
+
+function addToCart() {
+  const pid = parseInt(document.getElementById("pos-product-select").value);
+  const qty = parseInt(document.getElementById("pos-qty-input").value || "1");
+  if (qty <= 0) return toast("Количество должно быть больше 0", true);
+  const prod = PRODUCTS_CACHE.find(p => p.id === pid);
+  if (!prod) return;
+  const existing = CART.find(c => c.product_id === pid);
+  if (existing) existing.quantity += qty;
+  else CART.push({ product_id: pid, title: prod.title, price: prod.price, quantity: qty });
+  renderCart();
+}
+
+function removeFromCart(pid) {
+  CART = CART.filter(c => c.product_id !== pid);
+  renderCart();
+}
+
+function renderCart() {
+  let subtotal = 0;
+  document.getElementById("cart-tbody").innerHTML = CART.map(c => {
+    const sum = c.price * c.quantity;
+    subtotal += sum;
+    return `<tr>
+      <td>${c.title}</td>
+      <td>${c.price.toFixed(2)} ₽</td>
+      <td>${c.quantity} шт.</td>
+      <td>${sum.toFixed(2)} ₽</td>
+      <td><button class="btn btn-danger btn-sm" onclick="removeFromCart(${c.product_id})">Удалить</button></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5" style="color:var(--muted);">Корзина пуста</td></tr>`;
+
+  const total = subtotal * (100 - APPLIED_DISCOUNT) / 100.0;
+  document.getElementById("pos-subtotal").textContent = subtotal.toFixed(2) + " ₽";
+  document.getElementById("pos-discount").textContent = APPLIED_DISCOUNT + "%";
+  document.getElementById("pos-total").textContent = total.toFixed(2) + " ₽";
+}
+
+async function applyCard() {
+  const num = document.getElementById("pos-card").value.trim();
+  const infoEl = document.getElementById("card-info");
+  if (!num) { APPLIED_DISCOUNT = 0; infoEl.textContent = ""; renderCart(); return; }
+  try {
+    const res = await api("/api/cards/" + encodeURIComponent(num));
+    APPLIED_DISCOUNT = res.discount_percent;
+    infoEl.style.color = "var(--green)";
+    infoEl.textContent = `Карта активна (${res.customer_name}, скидка ${res.discount_percent}%)`;
+    renderCart();
+  } catch (e) {
+    APPLIED_DISCOUNT = 0;
+    infoEl.style.color = "var(--red)";
+    infoEl.textContent = e.message;
+    renderCart();
+  }
+}
+
+async function submitSale() {
+  try {
+    const res = await api("/api/sales", {
+      method: "POST",
+      body: JSON.stringify({
+        store_id: parseInt(document.getElementById("pos-store-select").value),
+        payment_method: document.getElementById("pos-payment").value,
+        card_number: document.getElementById("pos-card").value.trim() || null,
+        items: CART.map(c => ({ product_id: c.product_id, quantity: c.quantity })),
+      })
+    });
+    CART = [];
+    APPLIED_DISCOUNT = 0;
+    document.getElementById("pos-card").value = "";
+    document.getElementById("card-info").textContent = "";
+    toast("Продажа зарегистрирована! Открывается PDF-чек...");
+    window.open(res.pdf_url, "_blank");
+    loadSalesTab();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function loadCustomers() {
+  const q = document.getElementById("customer-search").value;
+  const list = await api("/api/customers?q=" + encodeURIComponent(q));
+  const isAdmin = USER.role === "Администратор";
+  document.getElementById("customers-tbody").innerHTML = list.map(c => `
+    <tr>
+      <td><strong>${c.full_name}</strong></td>
+      <td>${c.phone}</td>
+      <td>${c.email}</td>
+      <td>${c.card_number}</td>
+      <td>${c.discount_percent}%</td>
+      <td>${c.valid_until}</td>
+      <td>${c.purchases_count} / ${c.purchases_sum.toFixed(2)} ₽</td>
+      <td>${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteCustomer(${c.id})">🗑️</button>` : ""}</td>
+    </tr>
+  `).join("");
+}
+
+function openCustomerModal() {
+  document.getElementById("modal-root").innerHTML = `
+    <div class="modal-backdrop" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h3>Регистрация клиента и дисконтной карты</h3>
+        <div class="form-group"><label>ФИО клиента</label><input id="c-name" placeholder="Соколов Дмитрий Андреевич"></div>
+        <div class="form-group"><label>Телефон</label><input id="c-phone" placeholder="+79160001122"></div>
+        <div class="form-group"><label>Email</label><input id="c-email" placeholder="client@mail.ru"></div>
+        <div class="form-group"><label>Номер дисконтной карты</label><input id="c-card" value="${Math.floor(100000000 + Math.random()*900000000)}"></div>
+        <div class="form-group"><label>Процент скидки (%)</label><input type="number" id="c-disc" value="5" min="0" max="50"></div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="saveCustomer()">Сохранить</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveCustomer() {
+  try {
+    await api("/api/customers", {
+      method: "POST",
+      body: JSON.stringify({
+        full_name: document.getElementById("c-name").value,
+        phone: document.getElementById("c-phone").value,
+        email: document.getElementById("c-email").value,
+        card_number: document.getElementById("c-card").value,
+        discount_percent: parseInt(document.getElementById("c-disc").value || "0"),
+      })
+    });
+    closeModal();
+    toast("Клиент добавлен");
+    loadCustomers();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deleteCustomer(id) {
+  if (!confirm("Удалить клиента?")) return;
+  try {
+    await api(`/api/customers/${id}`, { method: "DELETE" });
+    toast("Клиент удалён");
+    loadCustomers();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function loadReports() {
+  const list = await api("/api/reports");
+  const canDel = USER.role === "Администратор" || USER.role === "Руководитель";
+  document.getElementById("reports-tbody").innerHTML = list.map(r => `
+    <tr>
+      <td><strong>${r.filename}</strong></td>
+      <td>${r.created_at}</td>
+      <td>${r.size_kb} КБ</td>
+      <td>
+        <a class="btn btn-primary btn-sm" href="${r.url}" target="_blank">Открыть / Скачать PDF</a>
+        ${canDel ? `<button class="btn btn-danger btn-sm" onclick="deleteReport('${r.filename}')">Удалить</button>` : ""}
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="4" style="color:var(--muted);">Отчёты ещё не формировались</td></tr>`;
+}
+
+async function generateReport() {
+  try {
+    const storeVal = document.getElementById("rep-store").value;
+    const res = await api("/api/reports/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        report_type: document.getElementById("rep-type").value,
+        date_from: document.getElementById("rep-from").value,
+        date_to: document.getElementById("rep-to").value,
+        store_id: storeVal ? parseInt(storeVal) : null,
+      })
+    });
+    toast("Отчёт сформирован в PDF");
+    window.open(res.url, "_blank");
+    loadReports();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deleteReport(fname) {
+  try {
+    await api("/api/reports/file/" + encodeURIComponent(fname), { method: "DELETE" });
+    toast("Файл удалён");
+    loadReports();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function loadUsers() {
+  const list = await api("/api/users");
+  document.getElementById("users-tbody").innerHTML = list.map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td><strong>${u.full_name}</strong></td>
+      <td>${u.login}</td>
+      <td><span class="badge badge-green">${u.role}</span></td>
+      <td>${u.login !== "admin_book" ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">Удалить</button>` : "—"}</td>
+    </tr>
+  `).join("");
+}
+
+function openUserModal() {
+  document.getElementById("modal-root").innerHTML = `
+    <div class="modal-backdrop" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h3>Создание учётной записи</h3>
+        <div class="form-group"><label>ФИО сотрудника</label><input id="u-name"></div>
+        <div class="form-group"><label>Логин (латиница)</label><input id="u-login"></div>
+        <div class="form-group"><label>Пароль</label><input type="password" id="u-pass"></div>
+        <div class="form-group"><label>Роль</label>
+          <select id="u-role">
+            <option value="Кассир">Кассир</option>
+            <option value="Менеджер">Менеджер</option>
+            <option value="Администратор">Администратор</option>
+            <option value="Руководитель">Руководитель</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="saveUser()">Создать</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveUser() {
+  try {
+    await api("/api/users", {
+      method: "POST",
+      body: JSON.stringify({
+        full_name: document.getElementById("u-name").value,
+        login: document.getElementById("u-login").value,
+        password: document.getElementById("u-pass").value,
+        role: document.getElementById("u-role").value,
+      })
+    });
+    closeModal();
+    toast("Пользователь создан");
+    loadUsers();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deleteUser(id) {
+  if (!confirm("Удалить пользователя?")) return;
+  try {
+    await api(`/api/users/${id}`, { method: "DELETE" });
+    toast("Пользователь удалён");
+    loadUsers();
+  } catch (e) { toast(e.message, true); }
+}
+
+function closeModal(e) {
+  if (!e || e.target.classList.contains("modal-backdrop")) {
+    document.getElementById("modal-root").innerHTML = "";
+  }
+}
+
+initApp();
+</script>
+</body>
+</html>
